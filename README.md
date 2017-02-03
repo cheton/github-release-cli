@@ -1,4 +1,5 @@
-# github-release-cli
+# github-release-cli [![build status](https://travis-ci.org/cheton/github-release-cli.svg?branch=master)](https://travis-ci.org/cheton/github-release-cli)
+
 A command-line tool for uploading release assets to a GitHub repository.
 
 ## Installation
