@@ -2,7 +2,7 @@
 
 [![NPM](https://nodei.co/npm/github-release-cli.png?downloads=true&stars=true)](https://www.npmjs.com/package/github-release-cli)
 
-A command-line tool for uploading release assets to a GitHub repository.
+A command-line tool for managing release assets on a GitHub repository.
 
 ## Installation
 
@@ -10,13 +10,12 @@ A command-line tool for uploading release assets to a GitHub repository.
 npm install -g github-release-cli
 ```
 
-
 ## Command Line Usage
 
 Run `github-release` with `-h` or `--help` options:
 
 ```
-Usage: github-release [options] [file ...]
+Usage: github-release <command> [<args>]
 
 Options:
 
@@ -28,6 +27,30 @@ Options:
   -t, --tag <tag>      tag
   -n, --name <name>    name
   -b, --body <body>    body
+```
+
+### Upload
+
+```
+$ github-release upload \
+  --owner cheton \
+  --repo github-release-cli \
+  --tag "v0.1.0" \
+  --name "v0.1.0" \
+  --body "This release contains bug fixes and imporvements, including:\n..." \
+  archive.zip index.html app.min.css app.min.js
+```
+
+### Delete
+
+You can use glob expressions to match files:
+```
+$ github-release delete \
+  --owner cheton \
+  --repo github-release-cli \
+  --tag "v0.1.0" \
+  --name "v0.1.0" \
+  archive.zip index.html "app.*"
 ```
 
 ## Examples
@@ -73,14 +96,14 @@ Now you're ready to upload assets to a GitHub repository from a CI server. For e
 
 ```
 COMMIT_LOG=`git log -1 --format='%ci %H %s'`
-github-release \
+github-release upload \
   --owner=cheton \
   --repo=github-release-cli \
   --tag="latest" \
   --name="${TRAVIS_BRANCH}" \
   --body="${COMMIT_LOG}" \
-  "releases/file.zip" \
-  "releases/file.tar.gz"
+  "releases/myapp-0.1.0-win-x32.exe" \
+  "releases/myapp-0.1.0-win-x64.exe"
 ```
 
 If you're using Travis CI, you may want to encrypt environment variables:
