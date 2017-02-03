@@ -55,7 +55,7 @@ $ github-release delete \
 
 ## Examples
 
-https://github.com/cncjs/cncjs/blob/master/.travis.yml
+https://github.com/cncjs/cncjs-pendant-tinyweb/blob/master/.travis.yml
 
 ## Secure Setup
 
