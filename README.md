@@ -1,5 +1,7 @@
 # github-release-cli [![build status](https://travis-ci.org/cheton/github-release-cli.svg?branch=master)](https://travis-ci.org/cheton/github-release-cli)
 
+[![NPM](https://nodei.co/npm/github-release-cli.png?downloads=true&stars=true)](https://www.npmjs.com/package/github-release-cli)
+
 A command-line tool for uploading release assets to a GitHub repository.
 
 ## Installation
