@@ -26,3 +26,7 @@ Options:
   -n, --name <name>    name
   -b, --body <body>    body
 ```
+
+## License
+
+MIT
