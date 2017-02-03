@@ -1,5 +1,5 @@
 # github-release-cli
-A command-line tool for uploading release assets on a GitHub repository.
+A command-line tool for uploading release assets to a GitHub repository.
 
 ## Installation
 
