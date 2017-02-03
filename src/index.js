@@ -3,17 +3,22 @@
 import path from 'path';
 import GitHubApi from 'github';
 import program from 'commander';
+import minimatch from 'minimatch';
 import pkg from '../package.json';
 
 program
     .version(pkg.version)
+    .usage('<command> [<args>]')
     .option('-T, --token <token>', 'OAuth2 token')
     .option('-o, --owner <owner>', 'owner')
     .option('-r, --repo <repo>', 'repo')
     .option('-t, --tag <tag>', 'tag')
     .option('-n, --name <name>', 'name')
-    .option('-b, --body <body>', 'body', false)
-    .parse(process.argv);
+    .option('-b, --body <body>', 'body', false);
+
+program.parse(process.argv);
+
+const [command, ...args] = program.args;
 
 const github = new GitHubApi({
     version: '3.0.0',
@@ -22,7 +27,6 @@ const github = new GitHubApi({
         'user-agent': 'GitHub-Release-App'
     }
 });
-const files = program.args;
 
 github.authenticate({
     type: 'oauth',
@@ -77,124 +81,118 @@ const uploadAsset = (options) => {
     });
 };
 
-const main = async () => {
-    const { owner, repo, tag, name, body } = program;
+const fn = {
+    'upload': async () => {
+        const { owner, repo, tag, name, body } = program;
+        const files = args;
+        let release;
 
-    try {
-        console.log('> releases#getReleaseByTag');
-        let release = await getReleaseByTag({
-            owner: owner,
-            repo: repo,
-            tag: tag
-        });
-        if (!release) {
-            console.log('> releases#createRelease');
-            release = await createRelease({
+        try {
+            console.log('> releases#getReleaseByTag');
+            release = await getReleaseByTag({
                 owner: owner,
                 repo: repo,
-                tag_name: tag,
-                name: name || tag,
-                body: body || ''
+                tag: tag
             });
-            console.log('ok', release);
-        } else if (release.body !== body) {
-            console.log('> releases#editRelease');
-            let releaseOptions = {
-                owner: owner,
-                repo: repo,
-                id: release.id,
-                tag_name: tag,
-                name: name || tag
-            };
-            if (body) {
-                releaseOptions.body = body || '';
-            }
-            release = await editRelease(releaseOptions);
-            console.log('ok', release);
+        } catch (err) {
+            // Ignore
         }
 
-        console.log('> releases#getAssets');
-        let assets = await getAssets({
-            owner: owner,
-            repo: repo,
-            id: release.id
-        });
-        console.log('assets=%d', assets.length);
-
-        assets = assets.filter(asset => {
-            // Example:
-            // 'cnc-1.1.0-latest-08c256a-linux-x64.tar.gz'
-            // ["cnc-1.1.0-latest-08c256a-linux-x64.tar.gz", "cnc", "1.1.0-latest-08c256a", "linux", "x64", "tar.gz"]
-            const pattern = new RegExp(/([a-zA-Z0-9][a-zA-Z0-9\-]*)\-(\d+\.\d+\.\d+(?:\-[a-zA-Z0-9][a-zA-Z0-9\-]*)?)(?:\-(mac|win|linux|tinyweb))(?:(?:\-([a-zA-Z0-9_\-]+))?\.(.*))/);
-
-            return files.some(file => {
-                let r1 = asset.name.match(pattern);
-                let r2 = path.basename(file).match(pattern);
-
-                if ((r1 === null) || (r2 === null)) {
-                    console.error('Unable to match file: asset="%s", file="%s"', asset.name, path.basename(file));
-                    return false;
-                }
-
-                // 0: full
-                // 1: name
-                // 2: version
-                // 3: platform
-                // 4: arch
-                // 5: extname
-
-                // Skip checking for #0 (full) and #2 (version)
-                r1[0] = r1[2] = undefined;
-                r2[0] = r2[2] = undefined;
-
-                // compact
-                r1 = r1.filter(r => r !== undefined && r !== null);
-                r2 = r2.filter(r => r !== undefined && r !== null);
-
-                // compare two arrays
-                return (r1.length === r2.length) && r1.every((v, i) => v === r2[i]);
-            });
-        });
-
-        if (assets.length > 0) {
-            console.log('> releases#deleteAsset');
-            for (let i = 0; i < assets.length; ++i) {
-                const asset = assets[i];
-                console.log('#%d', i + 1, {
-                    id: asset.id,
-                    name: asset.name,
-                    label: asset.label,
-                    state: asset.state,
-                    size: asset.size,
-                    download_count: asset.download_count,
-                    created_at: asset.created_at,
-                    updated_at: asset.updated_at
-                });
-                await deleteAsset({
+        try {
+            if (!release) {
+                console.log('> releases#createRelease');
+                release = await createRelease({
                     owner: owner,
                     repo: repo,
-                    id: asset.id
+                    tag_name: tag,
+                    name: name || tag,
+                    body: body || ''
                 });
-            }
-        }
-
-        if (files.length > 0) {
-            console.log('> releases#uploadAsset');
-            for (let i = 0; i < files.length; ++i) {
-                const file = files[i];
-                console.log('#%d name="%s" filePath="%s"', i + 1, path.basename(file), file);
-                await uploadAsset({
+            } else if (body && (release.body !== body)) {
+                console.log('> releases#editRelease');
+                let releaseOptions = {
                     owner: owner,
                     repo: repo,
                     id: release.id,
-                    filePath: file,
-                    name: path.basename(file)
-                });
+                    tag_name: tag,
+                    name: name || tag,
+                    body: body || ''
+                };
+                release = await editRelease(releaseOptions);
             }
-        }
-    } catch (err) {
-        console.error(err);
-    }
-};
 
-main();
+            if (files.length > 0) {
+                console.log('> releases#uploadAsset');
+                for (let i = 0; i < files.length; ++i) {
+                    const file = files[i];
+                    console.log('#%d name="%s" filePath="%s"', i + 1, path.basename(file), file);
+                    await uploadAsset({
+                        owner: owner,
+                        repo: repo,
+                        id: release.id,
+                        filePath: file,
+                        name: path.basename(file)
+                    });
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    },
+    'delete': async () => {
+        const { owner, repo, tag, name, body } = program;
+        const patterns = args;
+        let release;
+
+        try {
+            console.log('> releases#getReleaseByTag');
+            release = await getReleaseByTag({
+                owner: owner,
+                repo: repo,
+                tag: tag
+            });
+        } catch (err) {
+            console.error(err);
+            return;
+        }
+
+        try {
+            console.log('> releases#getAssets');
+            const assets = await getAssets({
+                owner: owner,
+                repo: repo,
+                id: release.id
+            });
+            const deleteAssets = assets.filter(asset => {
+                return patterns.some(pattern => minimatch(asset.name, pattern));
+            });
+            console.log('assets=%d, deleteAssets=%d', assets.length, deleteAssets.length);
+
+            if (deleteAssets.length > 0) {
+                console.log('> releases#deleteAsset');
+                for (let i = 0; i < deleteAssets.length; ++i) {
+                    const asset = deleteAssets[i];
+                    console.log('#%d', i + 1, {
+                        id: asset.id,
+                        name: asset.name,
+                        label: asset.label,
+                        state: asset.state,
+                        size: asset.size,
+                        download_count: asset.download_count,
+                        created_at: asset.created_at,
+                        updated_at: asset.updated_at
+                    });
+                    await deleteAsset({
+                        owner: owner,
+                        repo: repo,
+                        id: asset.id
+                    });
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+}[command];
+
+typeof fn === 'function' && fn();
