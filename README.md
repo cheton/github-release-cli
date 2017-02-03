@@ -31,8 +31,8 @@ Options:
 
 ### Upload
 
-```
-$ github-release upload \
+```sh
+github-release upload \
   --owner cheton \
   --repo github-release-cli \
   --tag "v0.1.0" \
@@ -44,8 +44,8 @@ $ github-release upload \
 ### Delete
 
 You can use glob expressions to match files:
-```
-$ github-release delete \
+```sh
+github-release delete \
   --owner cheton \
   --repo github-release-cli \
   --tag "v0.1.0" \
@@ -63,7 +63,7 @@ https://github.com/cncjs/cncjs-pendant-tinyweb/blob/master/.travis.yml
 
 First you will need to get an OAuth Token from GitHub using your own username and "note":
 
-```
+```sh
 curl \
   -u 'username' \
   -d '{"scopes":["repo"], "note":"Publish to GitHub Releases"}' \
@@ -72,7 +72,7 @@ curl \
 
 For users with two-factor authentication enabled, you must send the user's authentication code (i.e., one-time password) in the `X-GitHub-OTP` header:
 
-```
+```sh
 curl \
   -u 'username' \
   -H 'X-GitHub-OTP: 000000' \
@@ -86,7 +86,7 @@ For reducing security risks, you can store your OAuth token in an environment va
 
 Export the token using the one you got from above:
 
-```
+```sh
 export GITHUB_TOKEN=your_token
 ```
 
@@ -94,7 +94,7 @@ export GITHUB_TOKEN=your_token
 
 Now you're ready to upload assets to a GitHub repository from a CI server. For example:
 
-```
+```sh
 COMMIT_LOG=`git log -1 --format='%ci %H %s'`
 github-release upload \
   --owner=cheton \
@@ -108,7 +108,7 @@ github-release upload \
 
 If you're using Travis CI, you may want to encrypt environment variables:
 
-```
+```sh
 travis encrypt GITHUB_TOKEN=your_token
 ```
 
