@@ -76,7 +76,7 @@ COMMIT_LOG=`git log -1 --format='%ci %H %s'`
 github-release \
   --owner=cheton \
   --repo=github-release-cli \
-  --tag="${TRAVIS_BRANCH}" \
+  --tag="latest" \
   --name="${TRAVIS_BRANCH}" \
   --body="${COMMIT_LOG}" \
   "releases/file.zip" \
