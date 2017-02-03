@@ -30,6 +30,10 @@ Options:
   -b, --body <body>    body
 ```
 
+## Examples
+
+https://github.com/cncjs/cncjs/blob/master/.travis.yml
+
 ## Secure Setup
 
 ### 1. Get an OAuth token from GitHub
@@ -87,10 +91,6 @@ travis encrypt GITHUB_TOKEN=your_token
 
 Learn how to define encrypted variables in .travis.yml:<br>
 https://docs.travis-ci.com/user/environment-variables/#Defining-encrypted-variables-in-.travis.yml
-
-## Examples
-
-https://github.com/cncjs/cncjs/blob/master/.travis.yml
 
 ## License
 
