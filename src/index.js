@@ -1,7 +1,6 @@
 /* eslint no-console: 0 */
 /* eslint max-len: 0 */
 import path from 'path';
-import _ from 'lodash';
 import GitHubApi from 'github';
 import program from 'commander';
 import pkg from '../package.json';
@@ -122,15 +121,15 @@ const main = async () => {
         });
         console.log('assets=%d', assets.length);
 
-        assets = _.filter(assets, (asset) => {
+        assets = assets.filter(asset => {
             // Example:
             // 'cnc-1.1.0-latest-08c256a-linux-x64.tar.gz'
             // ["cnc-1.1.0-latest-08c256a-linux-x64.tar.gz", "cnc", "1.1.0-latest-08c256a", "linux", "x64", "tar.gz"]
             const pattern = new RegExp(/([a-zA-Z0-9][a-zA-Z0-9\-]*)\-(\d+\.\d+\.\d+(?:\-[a-zA-Z0-9][a-zA-Z0-9\-]*)?)(?:\-(mac|win|linux|tinyweb))(?:(?:\-([a-zA-Z0-9_\-]+))?\.(.*))/);
 
-            return _.some(files, (file) => {
-                const r1 = asset.name.match(pattern);
-                const r2 = path.basename(file).match(pattern);
+            return files.some(file => {
+                let r1 = asset.name.match(pattern);
+                let r2 = path.basename(file).match(pattern);
 
                 if ((r1 === null) || (r2 === null)) {
                     console.error('Unable to match file: asset="%s", file="%s"', asset.name, path.basename(file));
@@ -148,7 +147,12 @@ const main = async () => {
                 r1[0] = r1[2] = undefined;
                 r2[0] = r2[2] = undefined;
 
-                return _.isEqual(_.compact(r1), _.compact(r2));
+                // compact
+                r1 = r1.filter(r => r !== undefined && r !== null);
+                r2 = r2.filter(r => r !== undefined && r !== null);
+
+                // compare two arrays
+                return (r1.length === r2.length) && r1.every((v, i) => v === r2[i]);
             });
         });
 
