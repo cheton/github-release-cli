@@ -1,6 +1,6 @@
 {
   "name": "github-release-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A command-line tool for uploading release assets to a GitHub repository",
   "homepage": "https://github.com/cheton/github-release-cli",
   "author": "Cheton Wu <cheton@gmail.com>",
@@ -27,12 +27,15 @@
     "release",
     "cli"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "commander": "^2.9.0",
+    "github": "^8.1.1",
+    "lodash": "^4.17.4"
+  },
   "devDependencies": {
     "babel-cli": "^6.22.2",
     "babel-preset-es2015": "^6.22.0",
     "babel-preset-stage-0": "^6.22.0",
-    "github": "^8.1.1",
     "tap": "^10.0.2"
   }
 }
