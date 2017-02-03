@@ -1,6 +1,6 @@
 {
   "name": "github-release-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A command-line tool for uploading release assets to a GitHub repository",
   "homepage": "https://github.com/cheton/github-release-cli",
   "author": "Cheton Wu <cheton@gmail.com>",
