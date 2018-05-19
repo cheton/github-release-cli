@@ -37,8 +37,13 @@ github.authenticate({
 
 const getReleaseByTag = (options) => {
     return new Promise((resolve, reject) => {
-        github.repos.getReleaseByTag(options, (err, res) => {
-            err ? reject(err) : resolve(res);
+        github.repos.getReleases(options, (err, res) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            const releases = res.filter(r => r.tag_name === options.tag || r.name === options.tag);
+            releases.length ? resolve(releases[0]) : reject('Cannot find release');
         });
     });
 };
