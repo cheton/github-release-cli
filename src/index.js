@@ -36,14 +36,62 @@ github.authenticate({
 });
 
 const getReleaseByTag = (options) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            let page = 1;
+            let lastPage = 1;
+            let foundRelease = false;
+
+            do {
+                const releases = await getReleases({
+                    owner: options.owner,
+                    repo: options.repo,
+                    page: page,
+                    per_page: 30
+                });
+
+                console.log(`Fetched ${releases.length} results at page ${page}.`);
+
+                const searchedReleases = releases.filter(r => r.tag_name === options.tag ||
+                    r.name === options.tag);
+                if (searchedReleases.length) {
+                    resolve(releases[0]);
+                    foundRelease = true;
+                    break;
+                }
+
+                const pagination = (releases.meta.link || '').split(',')
+                    .reduce((acc, link) => {
+                        const r = link.match(/\?page=(\d)+.*rel="(\w+)"/);
+                        if (r && r[1] && r[2]) {
+                            const key = r[2];
+                            const value = Number(r[1]) || 0;
+                            acc[key] = value;
+                        }
+                        return acc;
+                    }, {});
+
+                if (pagination.last > 0) {
+                    lastPage = pagination.last;
+                }
+
+                ++page;
+            } while (page <= lastPage);
+
+            if (!foundRelease) {
+                reject('Cannot find release');
+            }
+        } catch (err) {
+            reject(err);
+            return;
+        }
+    });
+};
+
+const getReleases = (options) => {
     return new Promise((resolve, reject) => {
         github.repos.getReleases(options, (err, res) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            const releases = res.filter(r => r.tag_name === options.tag || r.name === options.tag);
-            releases.length ? resolve(releases[0]) : reject('Cannot find release');
+            err ? reject(err) : resolve(res);
         });
     });
 };
