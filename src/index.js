@@ -14,7 +14,9 @@ program
     .option('-r, --repo <repo>', 'repo')
     .option('-t, --tag <tag>', 'tag')
     .option('-n, --name <name>', 'name')
-    .option('-b, --body <body>', 'body', false);
+    .option('-b, --body <body>', 'body', false)
+    .option('-d, --draft', 'draft')
+    .option('-p, --prerelease', 'prerelease');
 
 program.parse(process.argv);
 
@@ -83,7 +85,7 @@ const uploadAsset = (options) => {
 
 const fn = {
     'upload': async () => {
-        const { owner, repo, tag, name, body } = program;
+        const { owner, repo, tag, name, body, draft, prerelease } = program;
         const files = args;
         let release;
 
@@ -106,7 +108,9 @@ const fn = {
                     repo: repo,
                     tag_name: tag,
                     name: name || tag,
-                    body: body || ''
+                    body: body || '',
+                    draft: draft || false,
+                    prerelease: prerelease || false
                 });
             } else if (body && (release.body !== body)) {
                 console.log('> releases#editRelease');
@@ -116,7 +120,9 @@ const fn = {
                     id: release.id,
                     tag_name: tag,
                     name: name || tag,
-                    body: body || ''
+                    body: body || '',
+                    draft: draft == null ? release.draft : draft,
+                    prerelease: prerelease == null ? release.prerelease : prerelease
                 };
                 release = await editRelease(releaseOptions);
             }
@@ -140,7 +146,7 @@ const fn = {
         }
     },
     'delete': async () => {
-        const { owner, repo, tag, name, body } = program;
+        const { owner, repo, tag, name, body, draft, prerelease } = program;
         const patterns = args;
         let release;
 
