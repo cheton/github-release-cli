@@ -27,6 +27,8 @@ Options:
   -t, --tag <tag>      tag
   -n, --name <name>    name
   -b, --body <body>    body
+  -d, --draft          draft
+  -p, --prerelease     prerelease
 ```
 
 ### Upload

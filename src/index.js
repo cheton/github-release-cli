@@ -14,7 +14,9 @@ program
     .option('-r, --repo <repo>', 'repo')
     .option('-t, --tag <tag>', 'tag')
     .option('-n, --name <name>', 'name')
-    .option('-b, --body <body>', 'body', false);
+    .option('-b, --body <body>', 'body', false)
+    .option('-d, --draft', 'draft')
+    .option('-p, --prerelease', 'prerelease');
 
 program.parse(process.argv);
 
@@ -34,8 +36,60 @@ github.authenticate({
 });
 
 const getReleaseByTag = (options) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            let page = 1;
+            let lastPage = 1;
+            let foundRelease = false;
+
+            do {
+                const releases = await getReleases({
+                    owner: options.owner,
+                    repo: options.repo,
+                    page: page,
+                    per_page: 30
+                });
+
+                console.log(`Fetched ${releases.length} results at page ${page}.`);
+
+                const searchedReleases = releases.filter(r => r.tag_name === options.tag ||
+                    r.name === options.tag);
+                if (searchedReleases.length) {
+                    resolve(releases[0]);
+                    foundRelease = true;
+                    break;
+                }
+
+                const pagination = (releases.meta.link || '').split(',')
+                    .reduce((acc, link) => {
+                        const r = link.match(/\?page=(\d)+.*rel="(\w+)"/);
+                        if (r && r[1] && r[2]) {
+                            const key = r[2];
+                            const value = Number(r[1]) || 0;
+                            acc[key] = value;
+                        }
+                        return acc;
+                    }, {});
+
+                if (pagination.last > 0) {
+                    lastPage = pagination.last;
+                }
+
+                ++page;
+            } while (page <= lastPage);
+
+            if (!foundRelease) {
+                reject('Cannot find release');
+            }
+        } catch (err) {
+            reject(err);
+        }
+    });
+};
+
+const getReleases = (options) => {
     return new Promise((resolve, reject) => {
-        github.repos.getReleaseByTag(options, (err, res) => {
+        github.repos.getReleases(options, (err, res) => {
             err ? reject(err) : resolve(res);
         });
     });
@@ -83,7 +137,7 @@ const uploadAsset = (options) => {
 
 const fn = {
     'upload': async () => {
-        const { owner, repo, tag, name, body } = program;
+        const { owner, repo, tag, name, body, draft, prerelease } = program;
         const files = args;
         let release;
 
@@ -106,7 +160,9 @@ const fn = {
                     repo: repo,
                     tag_name: tag,
                     name: name || tag,
-                    body: body || ''
+                    body: body || '',
+                    draft: draft || false,
+                    prerelease: prerelease || false
                 });
             } else if (body && (release.body !== body)) {
                 console.log('> releases#editRelease');
@@ -116,7 +172,9 @@ const fn = {
                     id: release.id,
                     tag_name: tag,
                     name: name || tag,
-                    body: body || ''
+                    body: body || '',
+                    draft: draft == null ? release.draft : draft,
+                    prerelease: prerelease == null ? release.prerelease : prerelease
                 };
                 release = await editRelease(releaseOptions);
             }
@@ -140,7 +198,7 @@ const fn = {
         }
     },
     'delete': async () => {
-        const { owner, repo, tag, name, body } = program;
+        const { owner, repo, tag, name, body, draft, prerelease } = program;
         const patterns = args;
         let release;
 
