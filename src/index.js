@@ -83,7 +83,6 @@ const getReleaseByTag = (options) => {
             }
         } catch (err) {
             reject(err);
-            return;
         }
     });
 };
