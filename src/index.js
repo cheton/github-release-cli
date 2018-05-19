@@ -50,10 +50,7 @@ const getReleaseByTag = (options) => {
                     per_page: 30
                 });
 
-                console.log(`Fetched ${releases.length} results at page ${page}.`);
-
-                const searchedReleases = releases.filter(r => r.tag_name === options.tag ||
-                    r.name === options.tag);
+                const searchedReleases = releases.filter(r => (r.tag_name === options.tag) || (r.name === options.tag));
                 if (searchedReleases.length) {
                     resolve(releases[0]);
                     foundRelease = true;
@@ -161,8 +158,8 @@ const fn = {
                     tag_name: tag,
                     name: name || tag,
                     body: body || '',
-                    draft: draft || false,
-                    prerelease: prerelease || false
+                    draft: !!draft,
+                    prerelease: !!prerelease
                 });
             } else if (body && (release.body !== body)) {
                 console.log('> releases#editRelease');
@@ -173,8 +170,12 @@ const fn = {
                     tag_name: tag,
                     name: name || tag,
                     body: body || '',
-                    draft: draft == null ? release.draft : draft,
-                    prerelease: prerelease == null ? release.prerelease : prerelease
+                    draft: (draft === undefined)
+                        ? !!release.draft
+                        : false,
+                    prerelease: (prerelease === undefined)
+                        ? !!release.prerelease
+                        : false
                 };
                 release = await editRelease(releaseOptions);
             }
