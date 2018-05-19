@@ -10,7 +10,7 @@
   "scripts": {
     "prepublish": "npm run build",
     "build": "babel --out-dir ./lib ./src",
-    "test": "tap test/*.js"
+    "test": "tap test/*.js --no-timeout --node-arg=--require --node-arg=babel-register --node-arg=--require --node-arg=babel-polyfill"
   },
   "files": [
     "bin",

@@ -1,4 +1,5 @@
-var test = require('tap').test;
+import { test } from 'tap';
 
-test('noop', function(t) {
+test('noop', (t) => {
+    t.end();
 });
