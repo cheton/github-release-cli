@@ -43,6 +43,30 @@ github-release upload \
   archive.zip index.html app.min.css app.min.js
 ```
 
+#### Create a prerelease
+
+```sh
+github-release upload \
+  --owner cheton \
+  --repo github-release-cli \
+  --tag "v0.1.0" \
+  --name "v0.1.0" \
+  --body "This is a prerelease" \
+  --prerelease
+```
+
+#### Change a prerelease to a published release
+
+```sh
+github-release upload \
+  --owner cheton \
+  --repo github-release-cli \
+  --tag "v0.1.0" \
+  --name "v0.1.0" \
+  --body "This is a published release" \
+  --prerelease=false
+```
+
 ### Delete
 
 You can use glob expressions to match files:
