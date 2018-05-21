@@ -15,8 +15,18 @@ program
     .option('-t, --tag <tag>', 'tag')
     .option('-n, --name <name>', 'name')
     .option('-b, --body <body>', 'body', false)
-    .option('-d, --draft', 'draft')
-    .option('-p, --prerelease', 'prerelease');
+    .option('-d, --draft [value]', 'draft', function(val) {
+        if (String(val).toLowerCase() === 'false') {
+            return false;
+        }
+        return true;
+    })
+    .option('-p, --prerelease [value]', 'prerelease', function(val) {
+        if (String(val).toLowerCase() === 'false') {
+            return false;
+        }
+        return true;
+    });
 
 program.parse(process.argv);
 
@@ -161,7 +171,7 @@ const fn = {
                     draft: !!draft,
                     prerelease: !!prerelease
                 });
-            } else if (body && (release.body !== body)) {
+            } else {
                 console.log('> releases#editRelease');
                 let releaseOptions = {
                     owner: owner,
@@ -169,7 +179,9 @@ const fn = {
                     id: release.id,
                     tag_name: tag,
                     name: name || tag,
-                    body: body || '',
+                    body: (body === undefined)
+                        ? release.body || ''
+                        : body || '',
                     draft: (draft === undefined)
                         ? !!release.draft
                         : false,
