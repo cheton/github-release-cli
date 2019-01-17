@@ -1,10 +1,16 @@
 /* eslint no-console: 0 */
 /* eslint max-len: 0 */
+import fs from 'fs';
 import path from 'path';
-import GitHubApi from 'github';
+import Octokit from '@octokit/rest';
 import program from 'commander';
+import * as LinkHeader from 'http-link-header';
+import * as mime from 'mime-types';
 import minimatch from 'minimatch';
+import parse from 'url-parse';
 import pkg from '../package.json';
+
+const octokit = new Octokit();
 
 program
     .version(pkg.version)
@@ -32,115 +38,31 @@ program.parse(process.argv);
 
 const [command, ...args] = program.args;
 
-const github = new GitHubApi({
-    version: '3.0.0',
-    timeout: 5000,
-    headers: {
-        'user-agent': 'GitHub-Release-App'
+if (!command !== 'list') {
+    octokit.authenticate({
+        type: 'oauth',
+        token: program.token || process.env.GITHUB_TOKEN
+    });
+}
+
+function next(response) {
+    if (!response.headers || !response.headers.link) {
+        return false;
     }
-});
 
-github.authenticate({
-    type: 'oauth',
-    token: program.token || process.env.GITHUB_TOKEN
-});
+    let link = LinkHeader.parse(response.headers.link).rel('next');
+    if (!link) {
+        return false;
+    }
 
-const getReleaseByTag = (options) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let page = 1;
-            let lastPage = 1;
-            let foundRelease = false;
+    const url = parse(link[0].uri, null, true);
+    if (!url.query) {
+        return false;
+    }
 
-            do {
-                const releases = await getReleases({
-                    owner: options.owner,
-                    repo: options.repo,
-                    page: page,
-                    per_page: 30
-                });
-
-                const searchedReleases = releases.filter(r => (r.tag_name === options.tag) || (r.name === options.tag));
-                if (searchedReleases.length) {
-                    resolve(releases[0]);
-                    foundRelease = true;
-                    break;
-                }
-
-                const pagination = (releases.meta.link || '').split(',')
-                    .reduce((acc, link) => {
-                        const r = link.match(/\?page=(\d)+.*rel="(\w+)"/);
-                        if (r && r[1] && r[2]) {
-                            const key = r[2];
-                            const value = Number(r[1]) || 0;
-                            acc[key] = value;
-                        }
-                        return acc;
-                    }, {});
-
-                if (pagination.last > 0) {
-                    lastPage = pagination.last;
-                }
-
-                ++page;
-            } while (page <= lastPage);
-
-            if (!foundRelease) {
-                reject('Cannot find release');
-            }
-        } catch (err) {
-            reject(err);
-        }
-    });
-};
-
-const getReleases = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.getReleases(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const createRelease = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.createRelease(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const editRelease = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.editRelease(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const getAssets = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.getAssets(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const deleteAsset = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.deleteAsset(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const uploadAsset = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.uploadAsset(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
+    const nextPage = parseInt(url.query.page);
+    return nextPage;
+}
 
 const fn = {
     'upload': async () => {
@@ -149,60 +71,58 @@ const fn = {
         let release;
 
         try {
-            console.log('> releases#getReleaseByTag');
-            release = await getReleaseByTag({
+            console.log(`> getReleaseByTag: owner=${owner}, repo=${repo}, tag=${tag}`);
+            const res = await octokit.repos.getReleaseByTag({
                 owner: owner,
                 repo: repo,
-                tag: tag
+                tag: tag,
             });
+            release = res.data;
         } catch (err) {
             // Ignore
         }
 
         try {
             if (!release) {
-                console.log('> releases#createRelease');
-                release = await createRelease({
-                    owner: owner,
-                    repo: repo,
+                console.log(`> createRelease: tag_name=${tag}, name=${name || tag}, draft=${!!draft}, prerelease=${!!prerelease}`);
+                const res = await octokit.repos.createRelease({
+                    owner,
+                    repo,
                     tag_name: tag,
                     name: name || tag,
                     body: body || '',
                     draft: !!draft,
-                    prerelease: !!prerelease
+                    prerelease: !!prerelease,
                 });
+                release = res.data;
             } else {
-                console.log('> releases#editRelease');
-                let releaseOptions = {
-                    owner: owner,
-                    repo: repo,
-                    id: release.id,
+                console.log(`> updateRelease: release_id=${release.id}, tag_name=${tag}, name=${name || tag}`);
+                const res = await octokit.repos.updateRelease({
+                    owner,
+                    repo,
+                    release_id: release.id,
                     tag_name: tag,
                     name: name || tag,
-                    body: (body === undefined)
-                        ? release.body || ''
-                        : body || '',
-                    draft: (draft === undefined)
-                        ? !!release.draft
-                        : false,
-                    prerelease: (prerelease === undefined)
-                        ? !!release.prerelease
-                        : false
-                };
-                release = await editRelease(releaseOptions);
+                    body: (body === undefined) ? release.body || '' : body || '',
+                    draft: (draft === undefined) ? !!release.draft : false,
+                    prerelease: (prerelease === undefined) ? !!release.prerelease : false,
+                });
+                release = res.data;
             }
 
             if (files.length > 0) {
-                console.log('> releases#uploadAsset');
+                console.log(`> uploadReleaseAsset: assets_url=${release.assets_url}`);
                 for (let i = 0; i < files.length; ++i) {
                     const file = files[i];
-                    console.log('#%d name="%s" filePath="%s"', i + 1, path.basename(file), file);
-                    await uploadAsset({
-                        owner: owner,
-                        repo: repo,
-                        id: release.id,
-                        filePath: file,
-                        name: path.basename(file)
+                    console.log(`  #${i + 1}: name="${path.basename(file)}" filePath="${file}"`);
+                    await octokit.repos.uploadReleaseAsset({
+                        url: release.upload_url,
+                        file: fs.createReadStream(file),
+                        headers: {
+                            'Content-Type': mime.lookup(file) || 'application/octet-stream',
+                            'Content-Length': fs.statSync(file).size,
+                        },
+                        name: path.basename(file),
                     });
                 }
             }
@@ -216,34 +136,40 @@ const fn = {
         let release;
 
         try {
-            console.log('> releases#getReleaseByTag');
-            release = await getReleaseByTag({
+            console.log(`> getReleaseByTag: owner=${owner}, repo=${repo}, tag=${tag}`);
+            const res = await octokit.repos.getReleaseByTag({
                 owner: owner,
                 repo: repo,
-                tag: tag
+                tag: tag,
             });
+            release = res.data;
         } catch (err) {
             console.error(err);
             return;
         }
 
         try {
-            console.log('> releases#getAssets');
-            const assets = await getAssets({
-                owner: owner,
-                repo: repo,
-                id: release.id
-            });
+            const release_id = release.id;
+            console.log(`> listAssetsForRelease: release_id=${release_id}`);
+
+            let assets = [];
+            let page = 1;
+            do {
+                const res = await octokit.repos.listAssetsForRelease({ owner, repo, release_id, page });
+                assets = assets.concat(res.data);
+                page = next(res);
+            } while (page)
+
             const deleteAssets = assets.filter(asset => {
                 return patterns.some(pattern => minimatch(asset.name, pattern));
             });
-            console.log('assets=%d, deleteAssets=%d', assets.length, deleteAssets.length);
+            console.log(`  assets=${assets.length}, deleteAssets=${deleteAssets.length}`);
 
             if (deleteAssets.length > 0) {
-                console.log('> releases#deleteAsset');
+                console.log('> deleteReleaseAsset:');
                 for (let i = 0; i < deleteAssets.length; ++i) {
                     const asset = deleteAssets[i];
-                    console.log('#%d', i + 1, {
+                    console.log(`  #${i + 1}:`, {
                         id: asset.id,
                         name: asset.name,
                         label: asset.label,
@@ -251,19 +177,36 @@ const fn = {
                         size: asset.size,
                         download_count: asset.download_count,
                         created_at: asset.created_at,
-                        updated_at: asset.updated_at
+                        updated_at: asset.updated_at,
                     });
-                    await deleteAsset({
-                        owner: owner,
-                        repo: repo,
-                        id: asset.id
-                    });
+                    await octokit.repos.deleteReleaseAsset({ owner, repo, asset_id: asset.id });
                 }
             }
         } catch (err) {
             console.error(err);
         }
-    }
+    },
+    'list': async () => {
+        const releases = await octokit.repos.listReleases({
+            owner: program.owner,
+            repo: program.repo,
+            page: 1,
+        });
+        for (const release of releases.data) {
+            console.log(`${release.name} (${release.tag_name})`);
+        }
+    },
 }[command];
 
-typeof fn === 'function' && fn();
+async function main() {
+    try {
+        typeof fn === 'function' && await fn();
+    } catch (err) {
+        // message has token in the response
+        const message = err.message.replace(/https?:[^\s]*/g, (match) => match.replace(/\?.*/, ''));
+        console.log(message);
+        process.exit(1);
+    }
+}
+
+main()
