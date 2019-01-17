@@ -1,6 +1,6 @@
 {
   "name": "github-release-cli",
-  "version": "0.4.1",
+  "version": "1.0.0",
   "description": "A command-line tool for managing release assets on a GitHub repository",
   "homepage": "https://github.com/cheton/github-release-cli",
   "author": "Cheton Wu <cheton@gmail.com>",
@@ -10,8 +10,8 @@
   "scripts": {
     "prepublish": "npm run build",
     "build": "babel --out-dir ./lib ./src",
-    "_test": "tap test/*.js --no-timeout --node-arg=--require --node-arg=babel-register --node-arg=--require --node-arg=babel-polyfill",
-    "test": "npm run build && node lib/index.js -a --owner cheton --repo github-release-cli list"
+    "test": "tap test/*.js --no-timeout --node-arg=--require --node-arg=babel-register --node-arg=--require --node-arg=babel-polyfill",
+    "test:list": "npm run build && node lib/index.js -a --owner cheton --repo github-release-cli list"
   },
   "files": [
     "bin",
