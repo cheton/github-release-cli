@@ -1,6 +1,7 @@
 /* eslint no-console: 0 */
 /* eslint max-len: 0 */
 import path from 'path';
+import fs from 'fs';
 
 import program from 'commander';
 import minimatch from 'minimatch';
