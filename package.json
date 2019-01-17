@@ -11,7 +11,7 @@
     "prepublish": "npm run build",
     "build": "babel --out-dir ./lib ./src",
     "_test": "tap test/*.js --no-timeout --node-arg=--require --node-arg=babel-register --node-arg=--require --node-arg=babel-polyfill",
-    "test": "npm run build && node lib/index.js --owner cheton --repo github-release-cli list"
+    "test": "npm run build && node lib/index.js -a --owner cheton --repo github-release-cli list"
   },
   "files": [
     "bin",

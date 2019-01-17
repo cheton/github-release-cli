@@ -22,6 +22,7 @@ program
     .option('-t, --tag <tag>', 'tag')
     .option('-n, --name <name>', 'name')
     .option('-b, --body <body>', 'body', false)
+    .option('-a, --anonymous', 'Use github API without token mainly for testing', false)
     .option('-d, --draft [value]', 'draft', function(val) {
         if (String(val).toLowerCase() === 'false') {
             return false;
@@ -39,10 +40,12 @@ program.parse(process.argv);
 
 const [command, ...args] = program.args;
 
-octokit.authenticate({
-    type: 'oauth',
-    token: program.token || process.env.GITHUB_TOKEN
-});
+if (!program.anonymous) {
+    octokit.authenticate({
+        type: 'oauth',
+        token: program.token || process.env.GITHUB_TOKEN
+    });
+}
 
 function next(response) {
   if (!response.headers || !response.headers.link) return false;
