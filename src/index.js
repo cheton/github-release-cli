@@ -177,16 +177,10 @@ const fn = {
         }
     },
     'list': async () => {
-        let releases = null;
-        let page = 1;
-        do {
-          releases = await octokit.repos.listReleases({ owner: program.owner, repo: program.repo, page });
-          for (const release of releases.data) {
+        const releases = await octokit.repos.listReleases({ owner: program.owner, repo: program.repo, page: 1 });
+        for (const release of releases.data) {
             console.log(`${release.name} (${release.tag_name})`);
-          }
-
-          page = next(releases)
-        } while (page)
+        }
     },
 }[command];
 
