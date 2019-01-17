@@ -38,7 +38,7 @@ program.parse(process.argv);
 
 const [command, ...args] = program.args;
 
-if (!command !== 'list') {
+if (command !== 'list') {
     octokit.authenticate({
         type: 'oauth',
         token: program.token || process.env.GITHUB_TOKEN
