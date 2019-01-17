@@ -10,7 +10,8 @@
   "scripts": {
     "prepublish": "npm run build",
     "build": "babel --out-dir ./lib ./src",
-    "test": "tap test/*.js --no-timeout --node-arg=--require --node-arg=babel-register --node-arg=--require --node-arg=babel-polyfill"
+    "_test": "tap test/*.js --no-timeout --node-arg=--require --node-arg=babel-register --node-arg=--require --node-arg=babel-polyfill",
+    "test": "npm run build && node lib/index.js --owner cheton --repo github-release-cli list"
   },
   "files": [
     "bin",
@@ -31,7 +32,10 @@
     "@octokit/rest": "^16.9.0",
     "babel-runtime": "^6.26.0",
     "commander": "^2.19.0",
-    "minimatch": "^3.0.4"
+    "http-link-header": "^1.0.2",
+    "mime-types": "^2.1.21",
+    "minimatch": "^3.0.4",
+    "url-parse": "^1.4.4"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

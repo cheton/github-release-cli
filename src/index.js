@@ -1,10 +1,16 @@
 /* eslint no-console: 0 */
 /* eslint max-len: 0 */
 import path from 'path';
-import GitHubApi from 'github';
+
 import program from 'commander';
 import minimatch from 'minimatch';
 import pkg from '../package.json';
+import * as LinkHeader from 'http-link-header';
+const URL = require('url-parse');
+import * as mime from 'mime-types';
+
+import Octokit from '@octokit/rest';
+const octokit = new Octokit();
 
 program
     .version(pkg.version)
@@ -32,115 +38,20 @@ program.parse(process.argv);
 
 const [command, ...args] = program.args;
 
-const github = new GitHubApi({
-    version: '3.0.0',
-    timeout: 5000,
-    headers: {
-        'user-agent': 'GitHub-Release-App'
-    }
-});
-
-github.authenticate({
+octokit.authenticate({
     type: 'oauth',
     token: program.token || process.env.GITHUB_TOKEN
 });
 
-const getReleaseByTag = (options) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let page = 1;
-            let lastPage = 1;
-            let foundRelease = false;
+function next(response) {
+  if (!response.headers || !response.headers.link) return false;
 
-            do {
-                const releases = await getReleases({
-                    owner: options.owner,
-                    repo: options.repo,
-                    page: page,
-                    per_page: 30
-                });
-
-                const searchedReleases = releases.filter(r => (r.tag_name === options.tag) || (r.name === options.tag));
-                if (searchedReleases.length) {
-                    resolve(releases[0]);
-                    foundRelease = true;
-                    break;
-                }
-
-                const pagination = (releases.meta.link || '').split(',')
-                    .reduce((acc, link) => {
-                        const r = link.match(/\?page=(\d)+.*rel="(\w+)"/);
-                        if (r && r[1] && r[2]) {
-                            const key = r[2];
-                            const value = Number(r[1]) || 0;
-                            acc[key] = value;
-                        }
-                        return acc;
-                    }, {});
-
-                if (pagination.last > 0) {
-                    lastPage = pagination.last;
-                }
-
-                ++page;
-            } while (page <= lastPage);
-
-            if (!foundRelease) {
-                reject('Cannot find release');
-            }
-        } catch (err) {
-            reject(err);
-        }
-    });
-};
-
-const getReleases = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.getReleases(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const createRelease = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.createRelease(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const editRelease = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.editRelease(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const getAssets = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.getAssets(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const deleteAsset = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.deleteAsset(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
-
-const uploadAsset = (options) => {
-    return new Promise((resolve, reject) => {
-        github.repos.uploadAsset(options, (err, res) => {
-            err ? reject(err) : resolve(res);
-        });
-    });
-};
+  let link = LinkHeader.parse(response.headers.link).rel('next');
+  if (!link) return false;
+  link = URL(link[0].uri, null, true).query
+  if (!link) return false;
+  return parseInt(link.page);
+}
 
 const fn = {
     'upload': async () => {
@@ -150,7 +61,7 @@ const fn = {
 
         try {
             console.log('> releases#getReleaseByTag');
-            release = await getReleaseByTag({
+            release = await octokit.repos.getReleaseByTag({
                 owner: owner,
                 repo: repo,
                 tag: tag
@@ -162,47 +73,43 @@ const fn = {
         try {
             if (!release) {
                 console.log('> releases#createRelease');
-                release = await createRelease({
-                    owner: owner,
-                    repo: repo,
+                result = await octokit.repos.createRelease({
+                    owner,
+                    repo,
                     tag_name: tag,
                     name: name || tag,
                     body: body || '',
                     draft: !!draft,
                     prerelease: !!prerelease
-                });
+                })
             } else {
-                console.log('> releases#editRelease');
-                let releaseOptions = {
-                    owner: owner,
-                    repo: repo,
-                    id: release.id,
+                console.log('> releases#updateRelease');
+                release = await octokit.repos.updateRelease({
+                    owner,
+                    repo,
+                    release_id: release.id,
                     tag_name: tag,
                     name: name || tag,
-                    body: (body === undefined)
-                        ? release.body || ''
-                        : body || '',
-                    draft: (draft === undefined)
-                        ? !!release.draft
-                        : false,
-                    prerelease: (prerelease === undefined)
-                        ? !!release.prerelease
-                        : false
-                };
-                release = await editRelease(releaseOptions);
+                    body: (body === undefined) ? release.body || '' : body || '',
+                    draft: (draft === undefined) ? !!release.draft : false,
+                    prerelease: (prerelease === undefined) ? !!release.prerelease : false,
+                })
             }
 
             if (files.length > 0) {
-                console.log('> releases#uploadAsset');
+                console.log('> releases#uploadReleaseAsset');
                 for (let i = 0; i < files.length; ++i) {
                     const file = files[i];
                     console.log('#%d name="%s" filePath="%s"', i + 1, path.basename(file), file);
-                    await uploadAsset({
-                        owner: owner,
-                        repo: repo,
-                        id: release.id,
-                        filePath: file,
-                        name: path.basename(file)
+
+                    await octokit.repos.uploadReleaseAsset({
+                        url: release.data.upload_url,
+                        file: fs.createReadStream(file),
+                        headers: {
+                            'content-type': mime.lookup('file') || 'application/octet-stream',
+                            'content-length': fs.statSync(file).size,
+                        },
+                        name: path.basename(asset),
                     });
                 }
             }
@@ -217,7 +124,7 @@ const fn = {
 
         try {
             console.log('> releases#getReleaseByTag');
-            release = await getReleaseByTag({
+            release = await octokit.repos.getReleaseByTag({
                 owner: owner,
                 repo: repo,
                 tag: tag
@@ -228,19 +135,24 @@ const fn = {
         }
 
         try {
-            console.log('> releases#getAssets');
-            const assets = await getAssets({
-                owner: owner,
-                repo: repo,
-                id: release.id
-            });
+            console.log('> releases#listAssetsForRelease');
+
+            let assets = [];
+            let _assets = null;
+            let page = 1;
+            do {
+                let _assets = await octokit.repos.listAssetsForRelease({owner, repo, release_id, per_page, page})
+                assets = assets.concat(_assets.data)
+                page = next(_assets)
+            } while (page)
+
             const deleteAssets = assets.filter(asset => {
                 return patterns.some(pattern => minimatch(asset.name, pattern));
             });
             console.log('assets=%d, deleteAssets=%d', assets.length, deleteAssets.length);
 
             if (deleteAssets.length > 0) {
-                console.log('> releases#deleteAsset');
+                console.log('> releases#deleteReleaseAsset');
                 for (let i = 0; i < deleteAssets.length; ++i) {
                     const asset = deleteAssets[i];
                     console.log('#%d', i + 1, {
@@ -253,17 +165,36 @@ const fn = {
                         created_at: asset.created_at,
                         updated_at: asset.updated_at
                     });
-                    await deleteAsset({
-                        owner: owner,
-                        repo: repo,
-                        id: asset.id
-                    });
+                    await octokit.repos.deleteReleaseAsset({owner, repo, asset_id: asset.id })
                 }
             }
         } catch (err) {
             console.error(err);
         }
-    }
+    },
+    'list': async () => {
+        let releases = null;
+        let page = 1;
+        do {
+          releases = await octokit.repos.listReleases({ owner: program.owner, repo: program.repo, page });
+          for (const release of releases.data) {
+            console.log(`${release.name} (${release.tag_name})`);
+          }
+
+          page = next(releases)
+        } while (page)
+    },
 }[command];
 
-typeof fn === 'function' && fn();
+async function main() {
+  try {
+    typeof fn === 'function' && await fn();
+  } catch (err) {
+    // message has token in the response
+    const message = err.message.replace(/https?:[^\s]*/g, (match) => match.replace(/\?.*/, ''))
+    console.log(message);
+    process.exit(1);
+  }
+}
+
+main()
