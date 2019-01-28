@@ -10,8 +10,6 @@ import minimatch from 'minimatch';
 import parse from 'url-parse';
 import pkg from '../package.json';
 
-const octokit = new Octokit();
-
 program
     .version(pkg.version)
     .usage('<command> [<args>]')
@@ -38,12 +36,11 @@ program.parse(process.argv);
 
 const [command, ...args] = program.args;
 
+const octoptions = {};
 if (command !== 'list') {
-    octokit.authenticate({
-        type: 'oauth',
-        token: program.token || process.env.GITHUB_TOKEN
-    });
+    octoptions.auth = `token ${program.token || process.env.GITHUB_TOKEN}`
 }
+const octokit = new Octokit(octoptions);
 
 function next(response) {
     if (!response.headers || !response.headers.link) {
