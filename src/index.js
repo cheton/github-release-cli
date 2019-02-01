@@ -36,12 +36,15 @@ program.parse(process.argv);
 
 const [command, ...args] = program.args;
 
-const octoptions = {};
-if (command !== 'list') {
-    octoptions.auth = `token ${program.token || process.env.GITHUB_TOKEN}`
-}
-const octokit = new Octokit(octoptions);
-
+const octokit = new Octokit({
+    auth() {
+        const token = (program.token || process.env.GITHUB_TOKEN);
+        if (token) {
+            return `token ${token}`;
+        }
+    }
+});
+    
 function next(response) {
     if (!response.headers || !response.headers.link) {
         return false;
