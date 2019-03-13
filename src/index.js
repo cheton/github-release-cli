@@ -14,6 +14,7 @@ program
     .version(pkg.version)
     .usage('<command> [<args>]')
     .option('-T, --token <token>', 'OAuth2 token')
+    .option('-e, --enterprise <url>', 'GitHub Enterprise API Endpoint', 'http://api.github.com')
     .option('-o, --owner <owner>', 'owner')
     .option('-r, --repo <repo>', 'repo')
     .option('-t, --tag <tag>', 'tag')
@@ -42,7 +43,8 @@ const octokit = new Octokit({
         if (token) {
             return `token ${token}`;
         }
-    }
+    },
+    baseUrl: program.enterprise,
 });
     
 function next(response) {
