@@ -18,17 +18,17 @@ Run `github-release` with `-h` or `--help` options:
 Usage: github-release <command> [<args>]
 
 Options:
-
-  -h, --help           output usage information
-  -V, --version        output the version number
-  -T, --token <token>  OAuth2 token
-  -o, --owner <owner>  owner
-  -r, --repo <repo>    repo
-  -t, --tag <tag>      tag
-  -n, --name <name>    name
-  -b, --body <body>    body
-  -d, --draft          draft
-  -p, --prerelease     prerelease
+  -V, --version             output the version number
+  --baseurl <baseurl>       API endpoint (default: "https://api.github.com")
+  -T, --token <token>       OAuth2 token
+  -o, --owner <owner>       owner
+  -r, --repo <repo>         repo
+  -t, --tag <tag>           tag
+  -n, --name <name>         name
+  -b, --body <body>         body
+  -d, --draft [value]       draft
+  -p, --prerelease [value]  prerelease
+  -h, --help                output usage information
 ```
 
 ### Upload
