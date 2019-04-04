@@ -18,7 +18,7 @@ program
     .option('-r, --repo <repo>', 'repo')
     .option('-t, --tag <tag>', 'tag')
     .option('-n, --name <name>', 'name')
-    .option('-b, --body <body>', 'body', false)
+    .option('-b, --body <body>', 'body')
     .option('-d, --draft [value]', 'draft', function(val) {
         if (String(val).toLowerCase() === 'false') {
             return false;
