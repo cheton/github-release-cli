@@ -13,6 +13,7 @@ import pkg from '../package.json';
 program
     .version(pkg.version)
     .usage('<command> [<args>]')
+    .option('--baseurl <baseurl>', 'API endpoint', 'https://api.github.com')
     .option('-T, --token <token>', 'OAuth2 token')
     .option('-o, --owner <owner>', 'owner')
     .option('-r, --repo <repo>', 'repo')
@@ -36,13 +37,10 @@ program.parse(process.argv);
 
 const [command, ...args] = program.args;
 
+const token = (program.token || process.env.GITHUB_TOKEN);
 const octokit = new Octokit({
-    auth() {
-        const token = (program.token || process.env.GITHUB_TOKEN);
-        if (token) {
-            return `token ${token}`;
-        }
-    }
+    auth: token || null,
+    baseUrl: program.baseurl,
 });
     
 function next(response) {
