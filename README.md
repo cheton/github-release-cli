@@ -21,13 +21,14 @@ Options:
   -V, --version             output the version number
   --baseurl <baseurl>       API endpoint (default: "https://api.github.com")
   -T, --token <token>       OAuth2 token
-  -o, --owner <owner>       owner
-  -r, --repo <repo>         repo
-  -t, --tag <tag>           tag
-  -n, --name <name>         name
-  -b, --body <body>         body
-  -d, --draft [value]       draft
-  -p, --prerelease [value]  prerelease
+  -o, --owner <owner>       The repository owner.
+  -r, --repo <repo>         The repository name.
+  -t, --tag <tag>           The name of the tag.
+  -c, --commitish <value>   Specifies the commitish value for tag. Unused if the tag already exists.
+  -n, --name <name>         The name of the release.
+  -b, --body <body>         Text describing the contents of the tag.
+  -d, --draft [value]       `true` makes the release a draft, and `false` publishes the release.
+  -p, --prerelease [value]  `true` to identify the release as a prerelease, `false` to identify the release as a full release.
   -h, --help                output usage information
 ```
 
@@ -41,6 +42,18 @@ github-release upload \
   --name "v0.1.0" \
   --body "This release contains bug fixes and imporvements, including:\n..." \
   archive.zip index.html app.min.css app.min.js
+```
+
+#### Specify the commitish value for tag
+
+```sh
+github-release upload \
+    --owner cheton \
+    --repo github-release-cli \
+    --commitish 6a8e375 \
+    --tag "v0.1.0" \
+    --name "v0.1.0" \
+    --body "The commitish value for tag"
 ```
 
 #### Create a prerelease
