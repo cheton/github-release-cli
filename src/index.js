@@ -15,18 +15,19 @@ program
     .usage('<command> [<args>]')
     .option('--baseurl <baseurl>', 'API endpoint', 'https://api.github.com')
     .option('-T, --token <token>', 'OAuth2 token')
-    .option('-o, --owner <owner>', 'owner')
-    .option('-r, --repo <repo>', 'repo')
-    .option('-t, --tag <tag>', 'tag')
-    .option('-n, --name <name>', 'name')
-    .option('-b, --body <body>', 'body')
-    .option('-d, --draft [value]', 'draft', function(val) {
+    .option('-o, --owner <owner>', 'The repository owner.')
+    .option('-r, --repo <repo>', 'The repository name.')
+    .option('-t, --tag <tag>', 'The name of the tag.')
+    .option('-c, --commitish <value>', 'Specifies the commitish value for tag. Unused if the tag already exists.')
+    .option('-n, --name <name>', 'The name of the release.')
+    .option('-b, --body <body>', 'Text describing the contents of the tag.')
+    .option('-d, --draft [value]', '`true` makes the release a draft, and `false` publishes the release.', function(val) {
         if (String(val).toLowerCase() === 'false') {
             return false;
         }
         return true;
     })
-    .option('-p, --prerelease [value]', 'prerelease', function(val) {
+    .option('-p, --prerelease [value]', '`true` to identify the release as a prerelease, `false` to identify the release as a full release.', function(val) {
         if (String(val).toLowerCase() === 'false') {
             return false;
         }
@@ -64,7 +65,7 @@ function next(response) {
 
 const fn = {
     'upload': async () => {
-        const { owner, repo, tag, name, body, draft, prerelease } = program;
+        const { owner, repo, tag, commitish, name, body, draft, prerelease } = program;
         const files = args;
         let release;
 
@@ -82,11 +83,12 @@ const fn = {
 
         try {
             if (!release) {
-                console.log(`> createRelease: tag_name=${tag}, name=${name || tag}, draft=${!!draft}, prerelease=${!!prerelease}`);
+                console.log(`> createRelease: tag_name=${tag}, target_commitish=${commitish}, name=${name || tag}, draft=${!!draft}, prerelease=${!!prerelease}`);
                 const res = await octokit.repos.createRelease({
                     owner,
                     repo,
                     tag_name: tag,
+                    target_commitish: commitish,
                     name: name || tag,
                     body: body || '',
                     draft: !!draft,
