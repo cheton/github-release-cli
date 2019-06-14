@@ -14,12 +14,13 @@ program
     .version(pkg.version)
     .usage('<command> [<args>]')
     .option('--baseurl <baseurl>', 'API endpoint', 'https://api.github.com')
-    .option('-T, --token <token>', 'OAuth2 token')
-    .option('-o, --owner <owner>', 'The repository owner.')
-    .option('-r, --repo <repo>', 'The repository name.')
+    .option('-T, --token <token>', 'OAuth2 token', null)
+    .option('-o, --owner <owner>', 'The repository owner.', '')
+    .option('-r, --repo <repo>', 'The repository name.', '')
     .option('-t, --tag <tag>', 'The name of the tag.')
+    .option('--release-id <id>', 'The release id.')
     .option('-c, --commitish <value>', 'Specifies the commitish value for tag. Unused if the tag already exists.')
-    .option('-n, --name <name>', 'The name of the release.')
+    .option('-n, --name <name>', 'The name of the release.', '') // Note: name is a reserved word and it has to specify a default value.
     .option('-b, --body <body>', 'Text describing the contents of the tag.')
     .option('-d, --draft [value]', '`true` makes the release a draft, and `false` publishes the release.', function(val) {
         if (String(val).toLowerCase() === 'false') {
@@ -49,8 +50,8 @@ function next(response) {
         return false;
     }
 
-    let link = LinkHeader.parse(response.headers.link).rel('next');
-    if (!link) {
+    const link = LinkHeader.parse(response.headers.link).rel('next');
+    if (!link || !link[0]) {
         return false;
     }
 
@@ -65,25 +66,27 @@ function next(response) {
 
 const fn = {
     'upload': async () => {
-        const { owner, repo, tag, commitish, name, body, draft, prerelease } = program;
+        const { owner, repo, tag, commitish, name, body, draft, prerelease, releaseId } = program;
         const files = args;
         let release;
 
         try {
-            console.log(`> getReleaseByTag: owner=${owner}, repo=${repo}, tag=${tag}`);
-            const res = await octokit.repos.getReleaseByTag({
-                owner: owner,
-                repo: repo,
-                tag: tag,
-            });
-            release = res.data;
+            if (tag) {
+                console.log(`> getReleaseByTag: owner=${owner}, repo=${repo}, tag=${tag}`);
+                const res = await octokit.repos.getReleaseByTag({ owner, repo, tag });
+                release = res.data;
+            } else if (releaseId) {
+                console.log(`> getRelease: owner=${owner}, repo=${repo}, release_id=${releaseId}`);
+                const res = await octokit.repos.getRelease({ owner, repo, release_id: releaseId });
+                release = res.data;
+            }
         } catch (err) {
             // Ignore
         }
 
         try {
             if (!release) {
-                console.log(`> createRelease: tag_name=${tag}, target_commitish=${commitish}, name=${name || tag}, draft=${!!draft}, prerelease=${!!prerelease}`);
+                console.log(`> createRelease: tag_name=${tag}, target_commitish=${commitish || ''}, name=${name || tag}, draft=${!!draft}, prerelease=${!!prerelease}`);
                 const res = await octokit.repos.createRelease({
                     owner,
                     repo,
@@ -131,18 +134,27 @@ const fn = {
         }
     },
     'delete': async () => {
-        const { owner, repo, tag, name, body, draft, prerelease } = program;
+        const { owner, repo, tag, releaseId } = program;
         const patterns = args;
         let release;
 
         try {
-            console.log(`> getReleaseByTag: owner=${owner}, repo=${repo}, tag=${tag}`);
-            const res = await octokit.repos.getReleaseByTag({
-                owner: owner,
-                repo: repo,
-                tag: tag,
-            });
-            release = res.data;
+            if (tag) {
+                console.log(`> getReleaseByTag: owner=${owner}, repo=${repo}, tag=${tag}`);
+                const res = await octokit.repos.getReleaseByTag({ owner, repo, tag });
+                release = res.data;
+            } else if (releaseId) {
+                console.log(`> getRelease: owner=${owner}, repo=${repo}, release_id=${releaseId}`);
+                const res = await octokit.repos.getRelease({ owner, repo, release_id: releaseId });
+                release = res.data;
+            }
+
+            if (patterns.length === 0) {
+                const release_id = release.id;
+                console.log(`> deleteRelease: release_id=${release_id}`);
+                await octokit.repos.deleteRelease({ owner, repo, release_id: release.id });
+                return;
+            }
         } catch (err) {
             console.error(err);
             return;
@@ -187,13 +199,22 @@ const fn = {
         }
     },
     'list': async () => {
-        const releases = await octokit.repos.listReleases({
-            owner: program.owner,
-            repo: program.repo,
-            page: 1,
-        });
-        for (const release of releases.data) {
-            console.log(`${release.name} (${release.tag_name})`);
+        const { owner, repo } = program;
+        let releases = [];
+
+        try {
+            let page = 1;
+            do {
+                const res = await octokit.repos.listReleases({ owner, repo, page });
+                releases = releases.concat(res.data);
+                page = next(res);
+            } while (page)
+        } catch (err) {
+            console.log(err);
+        }
+
+        for (const release of releases) {
+            console.log(`* tag_name=${JSON.stringify(release.tag_name)}, name=${JSON.stringify(release.name)}, id=${release.id}`);
         }
     },
 }[command];
