@@ -3,11 +3,13 @@
 import fs from 'fs';
 import path from 'path';
 import Octokit from '@octokit/rest';
+import chalk from 'chalk';
 import program from 'commander';
 import * as LinkHeader from 'http-link-header';
 import * as mime from 'mime-types';
 import minimatch from 'minimatch';
 import parse from 'url-parse';
+import ora from 'ora';
 import pkg from '../package.json';
 
 program
@@ -45,7 +47,7 @@ const octokit = new Octokit({
     baseUrl: program.baseurl,
 });
     
-function next(response) {
+const getNextPage = (response) => {
     if (!response.headers || !response.headers.link) {
         return false;
     }
@@ -62,7 +64,36 @@ function next(response) {
 
     const nextPage = parseInt(url.query.page);
     return nextPage;
-}
+};
+
+const getReleaseByTag = async ({ owner, repo, tag }) => {
+    try {
+        const res = await octokit.repos.getReleaseByTag({ owner, repo, tag });
+        const release = res.data;
+        return release;
+    } catch (e) {
+        // Ignore
+    }
+
+    try {
+        let page = 1;
+        do {
+            const res = await octokit.repos.listReleases({ owner, repo, page });
+            const releases = res.data;
+            for (const release of releases) {
+                if (release.tag_name === tag) {
+                    return release;
+                }
+            }
+            page = getNextPage(res);
+        } while (page)
+    } catch (err) {
+        // Ignore
+    }
+
+    console.log('No release found.');
+    return null;
+};
 
 const fn = {
     'upload': async () => {
@@ -73,8 +104,7 @@ const fn = {
         try {
             if (tag) {
                 console.log(`> getReleaseByTag: owner=${owner}, repo=${repo}, tag=${tag}`);
-                const res = await octokit.repos.getReleaseByTag({ owner, repo, tag });
-                release = res.data;
+                release = await getReleaseByTag({ owner, repo, tag });
             } else if (releaseId) {
                 console.log(`> getRelease: owner=${owner}, repo=${repo}, release_id=${releaseId}`);
                 const res = await octokit.repos.getRelease({ owner, repo, release_id: releaseId });
@@ -141,12 +171,15 @@ const fn = {
         try {
             if (tag) {
                 console.log(`> getReleaseByTag: owner=${owner}, repo=${repo}, tag=${tag}`);
-                const res = await octokit.repos.getReleaseByTag({ owner, repo, tag });
-                release = res.data;
+                release = await getReleaseByTag({ owner, repo, tag });
             } else if (releaseId) {
                 console.log(`> getRelease: owner=${owner}, repo=${repo}, release_id=${releaseId}`);
                 const res = await octokit.repos.getRelease({ owner, repo, release_id: releaseId });
                 release = res.data;
+            }
+
+            if (!release) {
+                return;
             }
 
             if (patterns.length === 0) {
@@ -169,7 +202,7 @@ const fn = {
             do {
                 const res = await octokit.repos.listAssetsForRelease({ owner, repo, release_id, page });
                 assets = assets.concat(res.data);
-                page = next(res);
+                page = getNextPage(res);
             } while (page)
 
             const deleteAssets = assets.filter(asset => {
@@ -202,19 +235,33 @@ const fn = {
         const { owner, repo } = program;
         let releases = [];
 
+        const spinner = ora({
+            spinner: 'point',
+            text: 'Fetching...',
+        }).start();
+
         try {
             let page = 1;
             do {
                 const res = await octokit.repos.listReleases({ owner, repo, page });
                 releases = releases.concat(res.data);
-                page = next(res);
+                page = getNextPage(res);
             } while (page)
         } catch (err) {
-            console.log(err);
+            console.error(err);
         }
 
+        spinner.stop();
+
         for (const release of releases) {
-            console.log(`* tag_name=${JSON.stringify(release.tag_name)}, name=${JSON.stringify(release.name)}, id=${release.id}`);
+            let prefix = 'RELEASE';
+            if (release.draft) {
+                prefix = 'DRAFT';
+            }
+            if (release.prerelease) {
+                prefix = 'PRERELEASE';
+            }
+            console.log(`${chalk.blue('●')} [${prefix}] id=${chalk.cyan(release.id)}, tag_name=${chalk.yellow(JSON.stringify(release.tag_name))}, name=${chalk.yellow(JSON.stringify(release.name))}, created_at=${chalk.yellow(release.created_at)}, published_at=${chalk.yellow(release.published_at)}`);
         }
     },
 }[command];
