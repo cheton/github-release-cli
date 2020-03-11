@@ -150,7 +150,7 @@ const fn = {
                     console.log(`  #${i + 1}: name="${path.basename(file)}" filePath="${file}"`);
                     await octokit.repos.uploadReleaseAsset({
                         url: release.upload_url,
-                        file: fs.createReadStream(file),
+                        data: fs.createReadStream(file),
                         headers: {
                             'Content-Type': mime.lookup(file) || 'application/octet-stream',
                             'Content-Length': fs.statSync(file).size,
