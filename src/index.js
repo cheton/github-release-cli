@@ -95,6 +95,14 @@ const getReleaseByTag = async ({ owner, repo, tag }) => {
     return null;
 };
 
+const parseBody = (str) => {
+    try {
+        return JSON.parse(str);
+    } catch () {
+        return str;
+    }
+}
+    
 const fn = {
     'upload': async () => {
         const { owner, repo, tag, commitish, name, body, draft, prerelease, releaseId } = program;
@@ -123,7 +131,7 @@ const fn = {
                     tag_name: tag,
                     target_commitish: commitish,
                     name: name || tag,
-                    body: body || '',
+                    body: parseBody(body) || '',
                     draft: !!draft,
                     prerelease: !!prerelease,
                 });
@@ -136,7 +144,7 @@ const fn = {
                     release_id: release.id,
                     tag_name: tag,
                     name: name || tag,
-                    body: (body === undefined) ? release.body || '' : body || '',
+                    body: (body === undefined) ? release.body || '' : parseBody(body) || '',
                     draft: (draft === undefined) ? !!release.draft : false,
                     prerelease: (prerelease === undefined) ? !!release.prerelease : false,
                 });
