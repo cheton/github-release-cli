@@ -98,7 +98,7 @@ const getReleaseByTag = async ({ owner, repo, tag }) => {
 const parseBody = (str) => {
     try {
         return JSON.parse(str);
-    } catch () {
+    } catch (err) {
         return str;
     }
 }
