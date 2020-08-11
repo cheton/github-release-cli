@@ -2,7 +2,7 @@
 /* eslint max-len: 0 */
 import fs from 'fs';
 import path from 'path';
-import Octokit from '@octokit/rest';
+import {Octokit} from '@octokit/rest';
 import chalk from 'chalk';
 import program from 'commander';
 import * as LinkHeader from 'http-link-header';
