@@ -2,7 +2,7 @@
 /* eslint max-len: 0 */
 import fs from 'fs';
 import path from 'path';
-import Octokit from '@octokit/rest';
+import { Octokit } from '@octokit/rest';
 import chalk from 'chalk';
 import program from 'commander';
 import * as LinkHeader from 'http-link-header';
@@ -16,21 +16,21 @@ program
     .version(pkg.version)
     .usage('<command> [<args>]')
     .option('--baseurl <baseurl>', 'API endpoint', 'https://api.github.com')
-    .option('-T, --token <token>', 'OAuth2 token', null)
-    .option('-o, --owner <owner>', 'The repository owner.', '')
-    .option('-r, --repo <repo>', 'The repository name.', '')
-    .option('-t, --tag <tag>', 'The name of the tag.')
+    .option('--token <token>', 'OAuth2 token', null)
+    .option('--owner <owner>', 'The repository owner.', '')
+    .option('--repo <repo>', 'The repository name.', '')
+    .option('--tag <tag>', 'The name of the tag.')
+    .option('--commitish <value>', 'Specifies the commitish value for tag. Unused if the tag already exists.')
     .option('--release-id <id>', 'The release id.')
-    .option('-c, --commitish <value>', 'Specifies the commitish value for tag. Unused if the tag already exists.')
-    .option('-n, --name <name>', 'The name of the release.', '') // Note: name is a reserved word and it has to specify a default value.
-    .option('-b, --body <body>', 'Text describing the contents of the tag.')
-    .option('-d, --draft [value]', '`true` makes the release a draft, and `false` publishes the release.', function(val) {
+    .option('--release-name <name>', 'The name of the release.', '')
+    .option('--body <body>', 'Text describing the contents of the tag.')
+    .option('--draft [value]', '`true` makes the release a draft, and `false` publishes the release.', function(val) {
         if (String(val).toLowerCase() === 'false') {
             return false;
         }
         return true;
     })
-    .option('-p, --prerelease [value]', '`true` to identify the release as a prerelease, `false` to identify the release as a full release.', function(val) {
+    .option('--prerelease [value]', '`true` to identify the release as a prerelease, `false` to identify the release as a full release.', function(val) {
         if (String(val).toLowerCase() === 'false') {
             return false;
         }
@@ -97,7 +97,17 @@ const getReleaseByTag = async ({ owner, repo, tag }) => {
 
 const fn = {
     'upload': async () => {
-        const { owner, repo, tag, commitish, name, body, draft, prerelease, releaseId } = program;
+        const {
+            owner,
+            repo,
+            tag,
+            commitish,
+            releaseId,
+            releaseName,
+            body,
+            draft,
+            prerelease,
+        } = program;
         const files = args;
         let release;
 
@@ -116,26 +126,26 @@ const fn = {
 
         try {
             if (!release) {
-                console.log(`> createRelease: tag_name=${tag}, target_commitish=${commitish || ''}, name=${name || tag}, draft=${!!draft}, prerelease=${!!prerelease}`);
+                console.log(`> createRelease: tag_name=${tag}, target_commitish=${commitish || ''}, name=${releaseName || tag}, draft=${!!draft}, prerelease=${!!prerelease}`);
                 const res = await octokit.repos.createRelease({
                     owner,
                     repo,
                     tag_name: tag,
                     target_commitish: commitish,
-                    name: name || tag,
+                    name: releaseName || tag,
                     body: body || '',
                     draft: !!draft,
                     prerelease: !!prerelease,
                 });
                 release = res.data;
             } else {
-                console.log(`> updateRelease: release_id=${release.id}, tag_name=${tag}, name=${name || tag}`);
+                console.log(`> updateRelease: release_id=${release.id}, tag_name=${tag}, name=${releaseName || tag}`);
                 const res = await octokit.repos.updateRelease({
                     owner,
                     repo,
                     release_id: release.id,
                     tag_name: tag,
-                    name: name || tag,
+                    name: releaseName || tag,
                     body: (body === undefined) ? release.body || '' : body || '',
                     draft: (draft === undefined) ? !!release.draft : false,
                     prerelease: (prerelease === undefined) ? !!release.prerelease : false,
@@ -150,7 +160,7 @@ const fn = {
                     console.log(`  #${i + 1}: name="${path.basename(file)}" filePath="${file}"`);
                     await octokit.repos.uploadReleaseAsset({
                         url: release.upload_url,
-                        file: fs.createReadStream(file),
+                        data: fs.createReadStream(file),
                         headers: {
                             'Content-Type': mime.lookup(file) || 'application/octet-stream',
                             'Content-Length': fs.statSync(file).size,
@@ -195,12 +205,12 @@ const fn = {
 
         try {
             const release_id = release.id;
-            console.log(`> listAssetsForRelease: release_id=${release_id}`);
+            console.log(`> listReleaseAssets: release_id=${release_id}`);
 
             let assets = [];
             let page = 1;
             do {
-                const res = await octokit.repos.listAssetsForRelease({ owner, repo, release_id, page });
+                const res = await octokit.repos.listReleaseAssets({ owner, repo, release_id, page });
                 assets = assets.concat(res.data);
                 page = getNextPage(res);
             } while (page)

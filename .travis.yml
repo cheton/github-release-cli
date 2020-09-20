@@ -1,16 +1,11 @@
-sudo: required
-dist: trusty
-group: edge
-
 language: node_js
 
 os:
   - linux
 
 node_js:
-  - '6'
-  - '8'
   - '10'
+  - '12'
 
 before_install:
   - npm install -g npm
