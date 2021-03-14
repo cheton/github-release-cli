@@ -29,8 +29,8 @@
     "cli"
   ],
   "dependencies": {
+    "@babel/runtime": "^7.13.10",
     "@octokit/rest": "^18.0.6",
-    "babel-runtime": "^6.26.0",
     "chalk": "^4.1.0",
     "commander": "^6.1.0",
     "http-link-header": "^1.0.2",
