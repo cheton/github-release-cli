@@ -18,19 +18,19 @@ Run `github-release` with `-h` or `--help` options:
 Usage: github-release <command> [<args>]
 
 Options:
-  -V, --version             output the version number
-  --baseurl <baseurl>       API endpoint (default: "https://api.github.com")
-  -T, --token <token>       OAuth2 token (default: null)
-  -o, --owner <owner>       The repository owner. (default: "")
-  -r, --repo <repo>         The repository name. (default: "")
-  -t, --tag <tag>           The name of the tag.
-  --release-id <id>         The release id.
-  -c, --commitish <value>   Specifies the commitish value for tag. Unused if the tag already exists.
-  -n, --name <name>         The name of the release. (default: "")
-  -b, --body <body>         Text describing the contents of the tag.
-  -d, --draft [value]       `true` makes the release a draft, and `false` publishes the release.
-  -p, --prerelease [value]  `true` to identify the release as a prerelease, `false` to identify the release as a full release.
-  -h, --help                output usage information
+  -V, --version          output the version number
+  --baseurl <baseurl>    API endpoint (default: "https://api.github.com")
+  --token <token>        OAuth2 token (default: null)
+  --owner <owner>        The repository owner. (default: "")
+  --repo <repo>          The repository name. (default: "")
+  --tag <tag>            The name of the tag.
+  --commitish <value>    Specifies the commitish value for tag. Unused if the tag already exists.
+  --release-id <id>      The release id.
+  --release-name <name>  The name of the release. (default: "")
+  --body <body>          Text describing the contents of the tag.
+  --draft [value]        `true` makes the release a draft, and `false` publishes the release.
+  --prerelease [value]   `true` to identify the release as a prerelease, `false` to identify the release as a full release.
+  -h, --help             display help for command
 ```
 
 ## Commands
@@ -50,7 +50,7 @@ github-release upload \
   --owner cheton \
   --repo github-release-cli \
   --tag "v0.1.0" \
-  --name "v0.1.0" \
+  --release-name "v0.1.0" \
   --body "This release contains bug fixes and imporvements, including:\n..." \
   archive.zip index.html app.min.css app.min.js
 ```
@@ -63,7 +63,7 @@ github-release upload \
     --repo github-release-cli \
     --commitish 6a8e375 \
     --tag "v0.1.0" \
-    --name "v0.1.0" \
+    --release-name "v0.1.0" \
     --body "The commitish value for tag"
 ```
 
@@ -74,7 +74,7 @@ github-release upload \
   --owner cheton \
   --repo github-release-cli \
   --tag "v0.1.0" \
-  --name "v0.1.0" \
+  --release-name "v0.1.0" \
   --body "This is a prerelease" \
   --prerelease
 ```
@@ -86,7 +86,7 @@ github-release upload \
   --owner cheton \
   --repo github-release-cli \
   --tag "v0.1.0" \
-  --name "v0.1.0" \
+  --release-name "v0.1.0" \
   --body "This is a published release" \
   --prerelease=false
 ```
@@ -169,7 +169,7 @@ github-release upload \
   --owner=cheton \
   --repo=github-release-cli \
   --tag="latest" \
-  --name="${TRAVIS_BRANCH}" \
+  --release-name="${TRAVIS_BRANCH}" \
   --body="${COMMIT_LOG}" \
   "releases/myapp-0.1.0-win-x32.exe" \
   "releases/myapp-0.1.0-win-x64.exe"
